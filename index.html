@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Control facial para micro:bit</title>
+<style>
+  :root{
+    --bg:#14161a; --panel:#1d2026; --line:#2c3038; --txt:#eef0f3; --mut:#9aa1ad;
+    --a:#f2b632; --b:#3fb8b0; --c:#e85d3a; --ok:#4cc26b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .app{display:grid;grid-template-columns:minmax(0,1fr) 360px;height:100vh}
+  @media (max-width:820px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;min-height:100vh}}
+
+  /* Vídeo */
+  .stage{position:relative;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:320px}
+  .stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+  .stage.mirror video,.stage.mirror canvas{transform:scaleX(-1)}
+  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;
+    text-align:center;padding:24px;background:rgba(10,11,14,.85);z-index:5}
+  .overlay h1{margin:0;font-size:1.6rem}
+  .overlay p{margin:0;color:var(--mut);max-width:440px;line-height:1.45}
+  .hidden{display:none!important}
+  .topbar{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:8px;z-index:4;flex-wrap:wrap}
+  .pill{background:rgba(20,22,26,.8);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.85rem;
+    display:flex;align-items:center;gap:8px;backdrop-filter:blur(4px)}
+  .dot{width:10px;height:10px;border-radius:50%;background:#666}
+  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .dot.face{background:var(--c)}
+  .dot.face.on{background:var(--ok)}
+
+  /* Panel */
+  .panel{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:auto}
+  section{padding:16px 18px;border-bottom:1px solid var(--line)}
+  h2{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:0 0 12px}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  button{font:inherit;color:var(--txt);background:#2a2e36;border:1px solid #3a3f49;border-radius:10px;padding:10px 12px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:.92rem}
+  button:hover{background:#333843}
+  button.primary{background:var(--a);color:#1a1a1a;border-color:var(--a);font-weight:600}
+  button.primary:hover{filter:brightness(1.07)}
+  button.wide{grid-column:1/-1}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .status{margin-top:10px;font-size:.85rem;color:var(--mut);min-height:1.2em}
+
+  .vals{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .vals li{display:grid;grid-template-columns:118px 1fr 34px;align-items:center;gap:10px;font-size:.88rem}
+  .vals .lbl small{display:block;color:var(--mut);font-size:.72rem}
+  .bar{height:12px;background:#2a2e36;border-radius:6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;border-radius:6px;transition:width .08s linear}
+  .vals .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+
+  .msg{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:1.05rem;background:#101215;border:1px solid var(--line);
+    border-radius:8px;padding:10px;letter-spacing:.06em;word-break:break-all}
+  .msg span{padding:1px 0;border-radius:3px}
+  .legend{font-size:.78rem;color:var(--mut);margin-top:8px;line-height:1.5}
+  details{font-size:.88rem;line-height:1.5;color:#d5d9e0}
+  details summary{cursor:pointer;color:var(--txt);font-weight:600}
+  pre{background:#101215;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:.76rem;line-height:1.45}
+  table{border-collapse:collapse;width:100%;font-size:.8rem;margin:8px 0}
+  td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left}
+  .row{display:flex;gap:8px;align-items:center;font-size:.88rem;color:var(--mut);margin-top:10px}
+  input[type=range]{flex:1}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage mirror" id="stage">
+    <video id="webcam" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+
+    <div class="topbar">
+      <div class="pill"><span class="dot face" id="faceDot"></span><span id="faceTxt">Sin cara</span></div>
+      <div class="pill"><span class="dot" id="connDot"></span><span id="connTxt">micro:bit sin conectar</span></div>
+      <div class="pill" id="fpsPill">0 fps</div>
+    </div>
+
+    <div class="overlay" id="overlay">
+      <h1>Control facial para micro:bit</h1>
+      <p id="overlayTxt">La cámara detecta tu cara y envía 10 veces por segundo los gestos al micro:bit por Bluetooth o por cable USB.</p>
+      <button class="primary" id="startBtn">▶ Activar la cámara</button>
+      <p style="font-size:.8rem">Funciona en Chrome o Edge (ordenador o Android). Las imágenes no salen de tu dispositivo.</p>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <section>
+      <h2>Conexión con el micro:bit</h2>
+      <div class="btns">
+        <button class="primary" id="btBtn">Bluetooth</button>
+        <button class="primary" id="usbBtn">Cable USB</button>
+        <button id="disBtn" class="wide" disabled>Desconectar</button>
+      </div>
+      <div class="status" id="status">Elige cómo conectar el micro:bit.</div>
+      <div class="status" id="sentTxt"></div>
+    </section>
+
+    <section>
+      <h2>Valores de la cara</h2>
+      <ul class="vals" id="vals"></ul>
+    </section>
+
+    <section>
+      <h2>Mensaje enviado</h2>
+      <div class="msg" id="msg">0000000000000000000</div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section>
+      <h2>Cámara</h2>
+      <div class="btns">
+        <button id="flipBtn">Cambiar cámara</button>
+        <button id="mirrorBtn">Efecto espejo</button>
+        <button id="meshBtn">Malla on/off</button>
+        <button id="fullBtn">Pantalla completa</button>
+      </div>
+      <div class="row">Envío cada <input type="range" id="rate" min="60" max="500" step="10" value="100"><b id="rateTxt">100 ms</b></div>
+    </section>
+
+    <section>
+      <details>
+        <summary>¿Cómo leer los datos en MakeCode?</summary>
+        <p>Cada mensaje tiene <b>19 cifras</b> seguidas de un salto de línea:</p>
+        <table>
+          <tr><th>Posición</th><th>Dato</th><th>Rango</th></tr>
+          <tr><td>0-1</td><td>X (horizontal)</td><td>0-99</td></tr>
+          <tr><td>2-3</td><td>Y (vertical)</td><td>0-99</td></tr>
+          <tr><td>4-5</td><td>Distancia</td><td>0-99</td></tr>
+          <tr><td>6-7</td><td>Giro (yaw)</td><td>0-99</td></tr>
+          <tr><td>8-9</td><td>Inclinación (pitch)</td><td>0-99</td></tr>
+          <tr><td>10-11</td><td>Boca abierta</td><td>0-99</td></tr>
+          <tr><td>12-13</td><td>Ojo izquierdo</td><td>0-99</td></tr>
+          <tr><td>14-15</td><td>Ojo derecho</td><td>0-99</td></tr>
+          <tr><td>16</td><td>Ladeo (roll)</td><td>0-9</td></tr>
+          <tr><td>17</td><td>Sonrisa / beso</td><td>0-9</td></tr>
+          <tr><td>18</td><td>Cara visible</td><td>0-1</td></tr>
+        </table>
+        <p>Es el mismo formato que la app de LOFI Robot (versión 2), así que sus programas funcionan igual. Ejemplo para la <b>cabeza robot</b> por <b>cable USB</b>: servo de la cabeza en P1 (giro) y servo de la boca en P0. Pégalo en la pestaña JavaScript de MakeCode y vuelve a Bloques:</p>
+<pre>let datos = ""
+let giro = 50
+let boca = 0
+let visible = 0
+serial.setBaudRate(BaudRate.BaudRate115200)
+basic.showIcon(IconNames.Square)
+
+serial.onDataReceived(serial.delimiters(Delimiters.NewLine), function () {
+    datos = serial.readUntil(serial.delimiters(Delimiters.NewLine))
+    if (datos.length &gt;= 19) {
+        giro = parseFloat(datos.substr(6, 2))
+        boca = parseFloat(datos.substr(10, 2))
+        visible = parseFloat(datos.substr(18, 1))
+    }
+})
+
+basic.forever(function () {
+    if (visible == 1) {
+        led.plotBarGraph(giro, 99)
+        // Giro de la cara (20-80) → ángulo del servo (0-180)
+        pins.servoWritePin(AnalogPin.P1,
+            Math.constrain(Math.map(giro, 20, 80, 0, 180), 0, 180))
+        // Boca (0-50) → servo de 90 (cerrada) a 150 (abierta)
+        pins.servoWritePin(AnalogPin.P0,
+            Math.constrain(Math.map(boca, 0, 50, 90, 150), 90, 150))
+    } else {
+        basic.showIcon(IconNames.Asleep, 0)
+    }
+})</pre>
+        <p>Si la cabeza gira al revés, cambia <code>0, 180</code> por <code>180, 0</code>. Los números 20-80 y 0-50 se pueden ajustar mirando las barras de esta app.</p>
+        <p><b>Por Bluetooth:</b> añade la extensión <i>bluetooth</i>, pon <code>bluetooth.startUartService()</code> al inicio y cambia <code>serial.onDataReceived</code> y <code>serial.readUntil</code> por <code>bluetooth.onUartDataReceived</code> y <code>bluetooth.uartReadUntil</code>. En Configuración del proyecto elige «No pairing required». No se puede usar a la vez que la extensión <i>radio</i>.</p>
+        <p><b>Del micro:bit a la app:</b> si el micro:bit envía la palabra <code>camera</code> seguida de salto de línea, la app cambia de cámara.</p>
+      </details>
+    </section>
+  </aside>
+</div>
+
+<script type="module">
+import vision from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+const { FaceLandmarker, FilesetResolver, DrawingUtils } = vision;
+
+/* ---------- Definición de los datos ---------- */
+const FIELDS = [
+  {k:"x",       lbl:"X",            sub:"horizontal",       max:99, digits:2, col:"#f2b632"},
+  {k:"y",       lbl:"Y",            sub:"vertical",         max:99, digits:2, col:"#f2b632"},
+  {k:"dist",    lbl:"Distancia",    sub:"cerca ↔ lejos",    max:99, digits:2, col:"#3fb8b0"},
+  {k:"yaw",     lbl:"Giro",         sub:"yaw",              max:99, digits:2, col:"#3fb8b0"},
+  {k:"pitch",   lbl:"Inclinación",  sub:"pitch",            max:99, digits:2, col:"#3fb8b0"},
+  {k:"mouth",   lbl:"Boca",         sub:"abierta",          max:99, digits:2, col:"#e85d3a"},
+  {k:"leye",    lbl:"Ojo izq.",     sub:"abierto",          max:99, digits:2, col:"#9b7be0"},
+  {k:"reye",    lbl:"Ojo der.",     sub:"abierto",          max:99, digits:2, col:"#9b7be0"},
+  {k:"roll",    lbl:"Ladeo",        sub:"roll",             max:9,  digits:1, col:"#5a9de6"},
+  {k:"smile",   lbl:"Sonrisa",      sub:"beso ↔ sonrisa",   max:9,  digits:1, col:"#e85d3a"},
+  {k:"visible", lbl:"Cara visible", sub:"0 = no, 1 = sí",   max:1,  digits:1, col:"#4cc26b"},
+];
+const face = Object.fromEntries(FIELDS.map(f=>[f.k,0]));
+
+const valsEl = document.getElementById("vals");
+const bars = {}, nums = {};
+for (const f of FIELDS){
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="lbl">${f.lbl}<small>${f.sub}</small></span>
+    <span class="bar"><i style="background:${f.col}"></i></span><span class="num">0</span>`;
+  valsEl.appendChild(li);
+  bars[f.k] = li.querySelector("i"); nums[f.k] = li.querySelector(".num");
+}
+document.getElementById("legend").innerHTML = FIELDS.map(f=>
+  `<span style="color:${f.col}">■</span> ${f.lbl}`).join(" &nbsp;");
+
+/* ---------- Utilidades ---------- */
+const clamp = (v,a,b)=>Math.min(b,Math.max(a,v));
+const $ = id=>document.getElementById(id);
+const setStatus = t=>$("status").textContent = t;
+
+/* ---------- Cámara + MediaPipe ---------- */
+const video = $("webcam"), canvas = $("canvas"), ctx = canvas.getContext("2d");
+const stage = $("stage");
+let landmarker = null, stream = null, facing = "user", running = false, showMesh = true, mirror = true;
+let drawing;
+
+async function loadModel(){
+  $("overlayTxt").textContent = "Cargando el modelo de detección facial… (solo la primera vez tarda un poco)";
+  const files = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+  const opts = (delegate)=>({
+    baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task", delegate},
+    outputFaceBlendshapes:false, runningMode:"VIDEO", numFaces:1 });
+  try { landmarker = await FaceLandmarker.createFromOptions(files, opts("GPU")); }
+  catch(e){ landmarker = await FaceLandmarker.createFromOptions(files, opts("CPU")); }
+  drawing = new DrawingUtils(ctx);
+}
+
+async function startCam(){
+  if (stream) stream.getTracks().forEach(t=>t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:facing, width:{ideal:640}, height:{ideal:480}}, audio:false});
+  video.srcObject = stream;
+  await video.play();
+  mirror = facing === "user";
+  stage.classList.toggle("mirror", mirror);
+  if (!running){ running = true; requestAnimationFrame(loop); }
+}
+
+$("startBtn").onclick = async ()=>{
+  $("startBtn").disabled = true;
+  try{
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error("Este navegador no permite usar la cámara aquí.");
+    if (!landmarker) await loadModel();
+    $("overlayTxt").textContent = "Pidiendo permiso para usar la cámara…";
+    await startCam();
+    $("overlay").classList.add("hidden");
+  }catch(err){
+    console.error(err);
+    $("overlayTxt").innerHTML = "No se pudo iniciar la cámara: <b>"+(err.message||err)+
+      "</b><br>Comprueba que has dado permiso a la cámara y que la página se abre con https.";
+    $("startBtn").disabled = false;
+    $("startBtn").textContent = "Reintentar";
+  }
+};
+
+let lastTime = -1, frames = 0, fpsT = performance.now();
+function loop(){
+  if (video.readyState >= 2 && video.currentTime !== lastTime){
+    lastTime = video.currentTime;
+    if (canvas.width !== video.videoWidth){ canvas.width = video.videoWidth; canvas.height = video.videoHeight; }
+    const res = landmarker.detectForVideo(video, performance.now());
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if (res.faceLandmarks?.length){
+      const lm = res.faceLandmarks[0];
+      if (showMesh) drawMesh(lm);
+      compute(lm);
+    } else {
+      face.visible = 0;
+    }
+    updateUI();
+    frames++;
+  }
+  const now = performance.now();
+  if (now - fpsT > 1000){ $("fpsPill").textContent = frames+" fps"; frames = 0; fpsT = now; }
+  requestAnimationFrame(loop);
+}
+
+function drawMesh(lm){
+  const C = FaceLandmarker;
+  drawing.drawConnectors(lm, C.FACE_LANDMARKS_TESSELATION, {color:"#C0C0C055", lineWidth:1});
+  drawing.drawConnectors(lm, C.FACE_LANDMARKS_RIGHT_EYE, {color:"#9b7be0", lineWidth:2});
+  drawing.drawConnectors(lm, C.FACE_LANDMARKS_LEFT_EYE, {color:"#9b7be0", lineWidth:2});
+  drawing.drawConnectors(lm, C.FACE_LANDMARKS_RIGHT_EYEBROW, {color:"#f2b632", lineWidth:2});
+  drawing.drawConnectors(lm, C.FACE_LANDMARKS_LEFT_EYEBROW, {color:"#f2b632", lineWidth:2});
+  drawing.drawConnectors(lm, C.FACE_LANDMARKS_FACE_OVAL, {color:"#E0E0E0", lineWidth:2});
+  drawing.drawConnectors(lm, C.FACE_LANDMARKS_LIPS, {color:"#e85d3a", lineWidth:2});
+  // punto de la nariz (referencia de X/Y)
+  const n = lm[1];
+  ctx.fillStyle = "#f2b632";
+  ctx.beginPath(); ctx.arc(n.x*canvas.width, n.y*canvas.height, 6, 0, Math.PI*2); ctx.fill();
+}
+
+/* Mismos cálculos que la app de LOFI Robot para que los valores sean compatibles */
+function compute(lm){
+  face.visible = 1;
+  const nose = lm[1];
+  face.x = Math.round(nose.x*100);
+  face.y = Math.round(nose.y*100);
+  face.dist = clamp(Math.round(100 - (-nose.z)*500), 0, 180);
+
+  const rEyeOut = lm[33], lEyeOut = lm[263], chin = lm[152], forehead = lm[10];
+  face.yaw   = clamp(Math.round((rEyeOut.z - lEyeOut.z + 0.12)*440), 0, 99);
+  face.pitch = clamp(Math.round((forehead.z - chin.z + 0.2)*275), 0, 99);
+  face.roll  = clamp(Math.round((rEyeOut.y - lEyeOut.y + 0.2)*27), 0, 9);
+
+  face.mouth = clamp(Math.round(Math.abs(lm[14].y - lm[13].y)*1500), 0, 99);
+
+  const ratio = (top,bot,inn,out)=> Math.abs(lm[top].y-lm[bot].y) / Math.abs(lm[inn].x-lm[out].x);
+  face.reye = clamp(Math.round(ratio(159,145,133,33)*100), 0, 99);
+  face.leye = clamp(Math.round(ratio(386,374,362,263)*100), 0, 99);
+
+  const mouthW = Math.abs(lm[291].x - lm[61].x);
+  const faceW  = Math.abs(lm[263].x - lm[33].x);
+  face.smile = clamp(Math.round((mouthW/faceW - 0.35)*30), 0, 9);
+}
+
+function buildMessage(){
+  return FIELDS.map(f=>{
+    const v = clamp(Math.round(face[f.k]), 0, f.max);
+    return f.digits === 2 ? String(v).padStart(2,"0") : String(v);
+  }).join("");
+}
+
+function updateUI(){
+  for (const f of FIELDS){
+    const v = clamp(face[f.k], 0, f.max);
+    bars[f.k].style.width = (v/f.max*100)+"%";
+    nums[f.k].textContent = v;
+  }
+  $("faceDot").classList.toggle("on", face.visible===1);
+  $("faceTxt").textContent = face.visible ? "Cara detectada" : "Sin cara";
+}
+
+function renderMessage(m){
+  let i = 0, html = "";
+  for (const f of FIELDS){ html += `<span style="color:${f.col}">${m.substr(i,f.digits)}</span>`; i += f.digits; }
+  $("msg").innerHTML = html;
+}
+
+/* ---------- Conexión micro:bit ---------- */
+const UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+const UART_TX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // micro:bit → app (notificaciones)
+const UART_RX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // app → micro:bit (escritura)
+let bleDevice=null, bleWrite=null, port=null, writer=null, reader=null, transport=null, busy=false;
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+function setConnected(kind){
+  transport = kind;
+  $("connDot").classList.toggle("on", !!kind);
+  $("connTxt").textContent = kind ? `micro:bit conectado (${kind==="ble"?"Bluetooth":"USB"})` : "micro:bit sin conectar";
+  $("disBtn").disabled = !kind;
+  $("btBtn").disabled = $("usbBtn").disabled = !!kind;
+}
+
+let rxBuf = "";
+function onIncoming(text){
+  rxBuf += text;
+  let i;
+  while ((i = rxBuf.indexOf("\n")) >= 0){
+    const line = rxBuf.slice(0,i).trim().toLowerCase();
+    rxBuf = rxBuf.slice(i+1);
+    if (line === "camera") flipCamera();
+  }
+}
+
+$("btBtn").onclick = async ()=>{
+  if (!navigator.bluetooth){ setStatus("Este navegador no tiene Bluetooth web. Usa Chrome o Edge (en iPhone/iPad no funciona)."); return; }
+  try{
+    setStatus("Busca tu micro:bit en la lista y pulsa «Emparejar»…");
+    bleDevice = await navigator.bluetooth.requestDevice({
+      filters:[{namePrefix:"BBC micro:bit"},{namePrefix:"Calliope mini"}],
+      optionalServices:[UART_SERVICE]});
+    bleDevice.addEventListener("gattserverdisconnected", ()=>{ bleWrite=null; setConnected(null); setStatus("Bluetooth desconectado."); });
+    const server = await bleDevice.gatt.connect();
+    const svc = await server.getPrimaryService(UART_SERVICE);
+    bleWrite = await svc.getCharacteristic(UART_RX);
+    try{
+      const notify = await svc.getCharacteristic(UART_TX);
+      await notify.startNotifications();
+      notify.addEventListener("characteristicvaluechanged", e=>onIncoming(dec.decode(e.target.value)));
+    }catch(e){ /* opcional */ }
+    setConnected("ble");
+    setStatus("¡Conectado por Bluetooth a "+(bleDevice.name||"micro:bit")+"!");
+  }catch(err){
+    console.error(err);
+    setStatus(err.name==="NotFoundError" ? "Conexión cancelada." :
+      "No se pudo conectar: "+err.message+". ¿Tiene el micro:bit el servicio UART de Bluetooth activado?");
+  }
+};
+
+$("usbBtn").onclick = async ()=>{
+  if (!navigator.serial){ setStatus("Este navegador no permite USB serie. Usa Chrome o Edge en ordenador."); return; }
+  try{
+    port = await navigator.serial.requestPort({filters:[{usbVendorId:0x0d28}]});
+    await port.open({baudRate:115200});
+    writer = port.writable.getWriter();
+    setConnected("usb");
+    setStatus("¡Conectado por cable USB!");
+    readSerial();
+  }catch(err){
+    console.error(err);
+    setStatus(err.name==="NotFoundError" ? "Conexión cancelada." :
+      "No se pudo abrir el puerto: "+err.message+". Cierra otras pestañas que usen el micro:bit (por ejemplo MakeCode).");
+  }
+};
+
+async function readSerial(){
+  try{
+    reader = port.readable.getReader();
+    while (true){
+      const {value, done} = await reader.read();
+      if (done) break;
+      if (value) onIncoming(dec.decode(value));
+    }
+  }catch(e){ /* puerto cerrado */ }
+  finally{ try{ reader?.releaseLock(); }catch(e){} }
+}
+
+async function disconnect(){
+  try{
+    if (transport==="ble" && bleDevice?.gatt.connected) bleDevice.gatt.disconnect();
+    if (transport==="usb"){
+      try{ await reader?.cancel(); }catch(e){}
+      try{ writer?.releaseLock(); }catch(e){}
+      try{ await port?.close(); }catch(e){}
+    }
+  }finally{
+    bleWrite=null; writer=null; reader=null; port=null;
+    setConnected(null); setStatus("Desconectado.");
+  }
+}
+$("disBtn").onclick = disconnect;
+navigator.serial?.addEventListener("disconnect", e=>{
+  if (port && (e.target===port || e.port===port)){
+    try{ writer?.releaseLock(); }catch(_){}
+    writer=null; reader=null; port=null;
+    setConnected(null); setStatus("Cable USB desconectado. Vuelve a enchufarlo y pulsa «Cable USB».");
+  }
+});
+
+/* Envío periódico */
+let interval = 100, timer = null, sent = 0;
+async function tick(){
+  const m = buildMessage();
+  renderMessage(m);
+  if (!transport || busy) return;
+  busy = true;
+  try{
+    const data = enc.encode(m + "\n");
+    if (transport==="ble" && bleWrite){
+      await bleWrite.writeValue(data);
+    } else if (transport==="usb" && writer){
+      await writer.write(data);
+    } else return;
+    sent++;
+    $("sentTxt").textContent = `Mensajes enviados: ${sent}`;
+  }catch(err){
+    console.warn("Error enviando", err);
+    $("sentTxt").textContent = "Error al enviar: " + (err.message||err);
+  }finally{ busy = false; }
+}
+function restartTimer(){ clearInterval(timer); timer = setInterval(tick, interval); }
+restartTimer();
+$("rate").oninput = e=>{ interval = +e.target.value; $("rateTxt").textContent = interval+" ms"; restartTimer(); };
+
+/* ---------- Controles de cámara ---------- */
+async function flipCamera(){
+  facing = facing==="user" ? "environment" : "user";
+  try{ await startCam(); }catch(e){ setStatus("No se pudo cambiar de cámara."); }
+}
+$("flipBtn").onclick = flipCamera;
+$("mirrorBtn").onclick = ()=>{ mirror = !mirror; stage.classList.toggle("mirror", mirror); };
+$("meshBtn").onclick = ()=>{ showMesh = !showMesh; };
+$("fullBtn").onclick = ()=>{ document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.(); };
+</script>
+</body>
+</html>

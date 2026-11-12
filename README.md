@@ -117,6 +117,22 @@ En MakeCode, cada dato se saca con `datos.substr(inicio, longitud)` y se convier
 
 **De la micro:bit a la app:** si la micro:bit envía `camera` seguido de salto de línea, la app cambia de cámara.
 
+## ¿Qué pasa si me tapo parte de la cara?
+
+Prueba a taparte un ojo o la boca con la mano. Verás que:
+
+- **Con un ojo tapado**, su valor casi no cambia.
+- **Con la boca tapada**, la sonrisa sube casi al máximo.
+
+**No es un fallo de la app.** La inteligencia artificial que detecta la cara (MediaPipe) siempre dibuja una cara completa. Lo que no puede ver, **se lo inventa** a partir del resto de la cara y de todas las caras con las que aprendió. Fíjate en que la malla dibuja los labios o el ojo encima de tu mano.
+
+- Si no ve el ojo, supone que está abierto, como en una cara normal.
+- Si no ve la boca, se imagina unos labios normales, y con ellos la sonrisa sale alta.
+
+La IA no sabe que algo está tapado: completa lo que falta con lo que ha aprendido, y lo hace con total seguridad aunque se equivoque.
+
+**Sobre la sonrisa:** con la cara relajada ya marca 6 o 7. Baja hacia 0 al poner morritos (beso) y sube a 9 con una sonrisa grande. Mide cómo de estirada está la boca, no si estás contento.
+
 ## Solución de problemas
 
 | Problema | Solución |

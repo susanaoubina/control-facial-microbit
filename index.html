@@ -64,6 +64,8 @@
   td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left}
   .row{display:flex;gap:8px;align-items:center;font-size:.88rem;color:var(--mut);margin-top:10px}
   input[type=range]{flex:1}
+  .credits p{margin:0 0 8px;font-size:.82rem;line-height:1.5;color:#c9ced6}
+  .credits a{color:var(--b)}
 </style>
 </head>
 <body>
@@ -172,6 +174,18 @@ basic.forever(function () {
         <p><b>Por Bluetooth:</b> añade la extensión <i>bluetooth</i>, pon <code>bluetooth.startUartService()</code> al inicio y cambia <code>serial.onDataReceived</code> y <code>serial.readUntil</code> por <code>bluetooth.onUartDataReceived</code> y <code>bluetooth.uartReadUntil</code>. En Configuración del proyecto elige «No pairing required». No se puede usar a la vez que la extensión <i>radio</i>.</p>
         <p><b>De la micro:bit a la app:</b> si la micro:bit envía la palabra <code>camera</code> seguida de salto de línea, la app cambia de cámara.</p>
       </details>
+    </section>
+
+    <section class="credits">
+      <h2>Créditos</h2>
+      <p>Versión en español adaptada para el aula: <b>Susana Oubiña Falcón</b>
+        (<a href="https://github.com/susanaoubina" target="_blank" rel="noopener">@susanaoubina</a>),
+        con la ayuda de <b>Claude Opus 5.5</b> (Anthropic).</p>
+      <p>Idea, formato de datos y diseño del robot:
+        <a href="https://cardboard.lofirobot.com/" target="_blank" rel="noopener">LOFI Robot / Cardboard Robots</a>.</p>
+      <p>Detección facial:
+        <a href="https://github.com/google-ai-edge/mediapipe" target="_blank" rel="noopener">MediaPipe</a>
+        (Google, licencia Apache 2.0).</p>
     </section>
   </aside>
 </div>

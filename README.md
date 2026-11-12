@@ -14,16 +14,6 @@ Es una versión propia y en español de la [Face Tracking App de LOFI Robot](htt
 - Enseña en pantalla el mensaje exacto que se envía, con cada dato en un color, para entender cómo funciona la comunicación.
 - **Privacidad:** el vídeo se procesa en el propio navegador. Ninguna imagen se sube a internet.
 
-## Publicarla en GitHub Pages
-
-La cámara y el Bluetooth del navegador solo funcionan en páginas **https**. GitHub Pages lo da gratis.
-
-1. Crea un repositorio nuevo en GitHub (por ejemplo, `control-facial-microbit`) y márcalo como **Public**.
-2. Sube `index.html` y este `README.md` a la raíz del repositorio con **Add file → Upload files**.
-3. Ve a **Settings → Pages**. En *Source* elige **Deploy from a branch**, rama **main** y carpeta **/ (root)**. Pulsa **Save**.
-4. En uno o dos minutos la app estará en:
-   **https://susanaoubina.github.io/control-facial-microbit/**
-
 ## Requisitos
 
 | | |
@@ -131,7 +121,7 @@ En MakeCode, cada dato se saca con `datos.substr(inicio, longitud)` y se convier
 
 | Problema | Solución |
 |---|---|
-| No aparece la imagen de la cámara | Abre la app con **https** (GitHub Pages) y da permiso a la cámara. Cierra otras apps que estén usando la cámara (Meet, Teams…). |
+| No aparece la imagen de la cámara | Abre la app desde su enlace (https) y da permiso a la cámara. Cierra otras apps que estén usando la cámara (Meet, Teams…). |
 | «No se pudo abrir el puerto» | Cierra MakeCode o cualquier otra pestaña conectada al micro:bit. Desenchufa el micro:bit, vuelve a enchufarlo y prueba otra vez. |
 | El contador sube, pero el robot no se mueve | Comprueba que el adaptador está encendido y que los servos están en P0 y P1. Comprueba que el programa de MakeCode está descargado en el micro:bit. |
 | El micro:bit se reinicia | Los servos deben alimentarse desde el adaptador. Revisa las pilas o la batería. |

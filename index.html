@@ -80,7 +80,7 @@
 
     <div class="overlay" id="overlay">
       <h1>Control facial para micro:bit</h1>
-      <p id="overlayTxt">La cámara detecta tu cara y envía 10 veces por segundo los gestos al micro:bit por Bluetooth o por cable USB.</p>
+      <p id="overlayTxt">La cámara detecta tu cara y envía 10 veces por segundo los gestos a la micro:bit por Bluetooth o por cable USB.</p>
       <button class="primary" id="startBtn">▶ Activar la cámara</button>
       <p style="font-size:.8rem">Funciona en Chrome o Edge (ordenador o Android). Las imágenes no salen de tu dispositivo.</p>
     </div>
@@ -88,13 +88,13 @@
 
   <aside class="panel">
     <section>
-      <h2>Conexión con el micro:bit</h2>
+      <h2>Conexión con la micro:bit</h2>
       <div class="btns">
         <button class="primary" id="btBtn">Bluetooth</button>
         <button class="primary" id="usbBtn">Cable USB</button>
         <button id="disBtn" class="wide" disabled>Desconectar</button>
       </div>
-      <div class="status" id="status">Elige cómo conectar el micro:bit.</div>
+      <div class="status" id="status">Elige cómo conectar la micro:bit.</div>
       <div class="status" id="sentTxt"></div>
     </section>
 
@@ -170,7 +170,7 @@ basic.forever(function () {
 })</pre>
         <p>Si la cabeza gira al revés, cambia <code>0, 180</code> por <code>180, 0</code>. Los números 20-80 y 0-50 se pueden ajustar mirando las barras de esta app.</p>
         <p><b>Por Bluetooth:</b> añade la extensión <i>bluetooth</i>, pon <code>bluetooth.startUartService()</code> al inicio y cambia <code>serial.onDataReceived</code> y <code>serial.readUntil</code> por <code>bluetooth.onUartDataReceived</code> y <code>bluetooth.uartReadUntil</code>. En Configuración del proyecto elige «No pairing required». No se puede usar a la vez que la extensión <i>radio</i>.</p>
-        <p><b>Del micro:bit a la app:</b> si el micro:bit envía la palabra <code>camera</code> seguida de salto de línea, la app cambia de cámara.</p>
+        <p><b>De la micro:bit a la app:</b> si la micro:bit envía la palabra <code>camera</code> seguida de salto de línea, la app cambia de cámara.</p>
       </details>
     </section>
   </aside>
@@ -352,7 +352,7 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 function setConnected(kind){
   transport = kind;
   $("connDot").classList.toggle("on", !!kind);
-  $("connTxt").textContent = kind ? `micro:bit conectado (${kind==="ble"?"Bluetooth":"USB"})` : "micro:bit sin conectar";
+  $("connTxt").textContent = kind ? `micro:bit conectada (${kind==="ble"?"Bluetooth":"USB"})` : "micro:bit sin conectar";
   $("disBtn").disabled = !kind;
   $("btBtn").disabled = $("usbBtn").disabled = !!kind;
 }
@@ -389,7 +389,7 @@ $("btBtn").onclick = async ()=>{
   }catch(err){
     console.error(err);
     setStatus(err.name==="NotFoundError" ? "Conexión cancelada." :
-      "No se pudo conectar: "+err.message+". ¿Tiene el micro:bit el servicio UART de Bluetooth activado?");
+      "No se pudo conectar: "+err.message+". ¿Tiene la micro:bit el servicio UART de Bluetooth activado?");
   }
 };
 
@@ -405,7 +405,7 @@ $("usbBtn").onclick = async ()=>{
   }catch(err){
     console.error(err);
     setStatus(err.name==="NotFoundError" ? "Conexión cancelada." :
-      "No se pudo abrir el puerto: "+err.message+". Cierra otras pestañas que usen el micro:bit (por ejemplo MakeCode).");
+      "No se pudo abrir el puerto: "+err.message+". Cierra otras pestañas que usen la micro:bit (por ejemplo MakeCode).");
   }
 };
 
